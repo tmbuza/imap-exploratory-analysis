@@ -3,5 +3,6 @@
     This workflow performs the following tasks:
 
     - Imports processed data.
-    - Conducts basic exploration including:
-        - ---IN PROGRESS---
+    - Conducts data exploration including:
+    
+    - ---IN PROGRESS---
