@@ -1,3 +1,3 @@
 Compare bioinformatics pipelines::
 
-    - A barplot comparing Mothur and QIIME2 genera profile
+    - A barplot comparing Mothur and QIIME2 genera profile.
