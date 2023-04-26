@@ -10,7 +10,7 @@ report: "report/workflow.rst"
 
 
 include: "rules/rmd_report.smk"
-# include: "rules/.smk"
+include: "rules/import_processed_data.smk"
 # include: "rules/.smk"
 # include: "rules/.smk"
 # include: "rules/.smk"
@@ -22,4 +22,4 @@ include: "rules/rmd_report.smk"
 rule all:
 	input:
 		"index.html",
-
+        "data/processed_data.rda"

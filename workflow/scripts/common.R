@@ -14,3 +14,4 @@ knitr::opts_chunk$set(
   fig.asp = 0.7,
   fig.show = "asis"
 )
+
