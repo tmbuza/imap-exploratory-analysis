@@ -79,7 +79,7 @@ A detailed interactive snakemake HTML report is available [here](https://complex
 
 
 
-```{r child='explore_processed_data.Rmd'}
+```{r child='explore_processed_data.Rmd', evel = FALSE}
 ``
 
 

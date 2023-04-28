@@ -1,10 +1,10 @@
+
 # Get dot rule graphs
 rule get_dot_rulegraph:
 	output:
-		report("dags/rulegraph.svg", caption="../report/rulegraph.rst", category="Explore rules"),
-		"dags/rulegraph.png",
+		"dags/rulegraph.svg",
 	conda:
-		"../envs/environment.yml"	
+		"../envs/rmarkdown.yml"	
 	shell:
 		"bash workflow/scripts/rules_dag.sh"
 
@@ -14,7 +14,7 @@ rule project_tree:
 	output:
 		tree="results/project_tree.txt",
 	conda:
-		"../envs/environment.yml"
+		"../envs/rmarkdown.yml"
 	shell:
 		"""
 		bash workflow/scripts/tree.sh
@@ -26,23 +26,22 @@ rule snakemake_html_report:
 		smkhtml="report.html",
 		smkpng="images/smkreport/screenshot.png",
 	conda:
-		"../envs/environment.yml"
+		"../envs/rmarkdown.yml"
 	shell:
 		"""
 		bash workflow/scripts/smk_html_report.sh
 		"""
 
-
 # User styled report for GHPages
 rule deploy_to_github_pages:
 	input:
-		rulegraph="dags/rulegraph.svg",
+		dag="dags/rulegraph.svg",
 		tree="results/project_tree.txt",
 		# smkpng="images/smkreport/screenshot.png",
 	output:
 		doc="index.html",
 	conda:
-		"../envs/environment.yml"
+		"../envs/rmarkdown.yml"
 	shell:
 		"""
 		R -e "library(rmarkdown); render('index.Rmd')"

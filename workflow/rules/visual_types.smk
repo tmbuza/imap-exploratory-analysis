@@ -13,9 +13,7 @@ rule heatmaps:
     output: 
         "visual_types/heatmaps/{prefix}.Rmd",
     run: 
-        """
-        echo {wildcards.prefix} > {output}
-        """
+        "echo {wildcards.prefix} > {output}"
 
 
 rule hierarchical_clusters:
