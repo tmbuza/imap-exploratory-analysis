@@ -1,15 +1,15 @@
 # Exploration of processded data
 
-## Import data
 ```{r}
 library(tidyverse)
 library(phyloseq)
-# library(metagMisc)
 library(microbiome)
-# library(microViz)
-if (!require("microbiomeMarker")) {BiocManager::install("microbiomeMarker")}
 library(microbiomeMarker)
+```
 
+
+## Import data
+```{r data}
 # QIIME2
 # load("~/Dropbox/MICROBIOME/imap-data-processing/data/qiime2/qiime2_phyloseq_objects.rda", verbose = TRUE)
 # composite <- read_csv("~/Dropbox/MICROBIOME/imap-data-processing/data/qiime2/qiime2_composite.csv", show_col_types = FALSE)
@@ -19,54 +19,196 @@ library(microbiomeMarker)
 # composite <- read_csv("~/Dropbox/MICROBIOME/imap-data-processing/data/mothur/mothur_composite.csv", show_col_types = FALSE)
 
 # External data
-load("~/Dropbox/MICROBIOME/imap-data-processing/data/external_phyloseq_objects.rda", verbose = TRUE)
-# composite <- read_csv("~/Dropbox/MICROBIOME/imap-data-processing/data/mothur/mothur_composite.csv", show_col_types = FALSE)
-
-ps <- ps_rel
-ps
-```
-
-## Plot basic phyloseq cladogram
-```{r fig.height=15, fig.width=10}
-library(phyloseq)
-# plot(ps_tree)
+load("~/Dropbox/MICROBIOME/imap-data-processing/data/external/external_ps_objects.rda", verbose = TRUE)
 ```
 
 
-## Plot lefse LDA heatmap
+## Dataset: `ps_GlobalPatterns`
 ```{r}
-library(microbiomeMarker)
-data(kostic_crc)
+ps_GlobalPatterns
+cat("\nSample Variables\n")
+sample_variables(ps_GlobalPatterns)
 
-ps <- kostic_crc
+cat("\nNumber of levels in selected group\n")
+1:length(unique(sample_data(ps_GlobalPatterns)$SampleType))
+```
+
+## Dataset: `ps_ibd_phylo`
+```{r}
+ps_ibd_phylo
+cat("\nSample Variables\n")
+sample_variables(ps_ibd_phylo)
+
+cat("\nNumber of levels in selected group\n")
+1:length(unique(sample_data(ps_ibd_phylo)$DiseaseState))
 ```
 
 
+```{r fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
+library(microViz)
+ps_ibd_phylo %>%
+  tax_fix() %>% 
+  comp_barplot(
+    tax_level = "Genus", n_taxa = 15, other_name = "Other",
+    taxon_renamer = function(x) stringr::str_remove(x, " [ae]t rel."),
+    palette = distinct_palette(n = 15, add = "grey90"),
+    merge_other = FALSE, bar_outline_colour = "darkgrey"
+  ) +
+  coord_flip() +
+  labs(x = NULL, y = NULL) +
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+```
+
+## Dataset: `ps_dietswap`
+```{r}
+ps_dietswap
+cat("\nSample Variables\n")
+sample_variables(ps_dietswap)
+
+cat("\nNumber of levels in nationality\n")
+1:length(unique(sample_data(ps_dietswap)$nationality))
+cat("\nNumber of levels in group\n")
+1:length(unique(sample_data(ps_dietswap)$group))
+```
 
 
-```{r message=FALSE, warning=FALSE}
-phy <- phyloseq::subset_taxa(
-    ps,
-    Phylum %in% c("Firmicutes")
-)
-mm_lefse <- run_lefse(
-    phy,
-    wilcoxon_cutoff = 0.01,
-    group = "DIAGNOSIS",
+```{r}
+run_lefse(
+    ps_dietswap,
+    wilcoxon_cutoff = 0.001,
+    group = "nationality",
+    taxa_rank = "Phylum",
+    transform = "log10",
     kw_cutoff = 0.01,
     multigrp_strat = TRUE,
-    lda_cutoff = 1
-)
-plot_heatmap(mm_lefse, group = "DIAGNOSIS")
+    lda_cutoff = 2) %>% 
+  plot_heatmap(group = "nationality", color = "rainbow, 1:length(unique(df_dietswap$nationality))")
+```
+
+```{r dietswap, fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
+library(microViz)
+ps_dietswap %>%
+  comp_barplot(
+    tax_level = "Genus", n_taxa = 15, other_name = "Other",
+    taxon_renamer = function(x) stringr::str_remove(x, " [ae]t rel."),
+    palette = distinct_palette(n = 15, add = "grey90"),
+    merge_other = FALSE, bar_outline_colour = "darkgrey"
+  ) +
+  coord_flip() +
+  facet_wrap("nationality", nrow = 1, scales = "free") +
+  labs(x = NULL, y = NULL) +
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
 
 ```
 
 
-## Plot lefse LDA cladogram
-```{r message=FALSE, warning=FALSE}
-data(kostic_crc)
+```{r}
+# ## Recoding values in phyloseq object
+# data("dietswap", package = "microbiome")
+# 
+# # create a couple of numerical variables to use as constraints or conditions
+# dietswap <- dietswap %>%
+#   ps_mutate(
+#     weight = recode(bmi_group, obese = 3, overweight = 2, lean = 1),
+#     female = if_else(sex == "female", true = 1, false = 0),
+#     african = if_else(nationality == "AFR", true = 1, false = 0)
+#   )
+# # add a couple of missing values to show how microViz handles missing data
+# sample_data(dietswap)$african[c(3, 4)] <- NA
+```
+
+
+## Dataset: `ps_caporaso`
+```{r}
+ps_caporaso
+cat("\nSample Variables\n")
+sample_variables(ps_caporaso)
+
+cat("\nNumber of levels in selected group\n")
+1:length(unique(df_caporaso$SampleType))
+```
+
+
+```{r ps_caporaso_heatmap, fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
+
+ps_caporaso <- ps_caporaso %>%  tax_fix()
+
+run_lefse(
+    ps_caporaso, 
+    wilcoxon_cutoff = 0.001,
+    group = "SampleType",
+    taxa_rank = "Class",
+    transform = "log10p",
+    kw_cutoff = 0.01,
+    multigrp_strat = TRUE,
+    lda_cutoff = 2) %>%
+  plot_heatmap(group = "SampleType", color = c("green", "red", "grey", "magenta", "orange", "pink", "yellow"))
+```
+
+
+```{r fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
+library(microViz)
+ps_caporaso %>%
+  tax_fix() %>% 
+  comp_barplot(
+    tax_level = "Genus", n_taxa = 15, other_name = "Other",
+    taxon_renamer = function(x) stringr::str_remove(x, " [ae]t rel."),
+    palette = distinct_palette(n = 15, add = "grey90"),
+    merge_other = FALSE, bar_outline_colour = "darkgrey"
+  ) +
+  coord_flip() +
+  facet_wrap("SampleType", nrow = 1, scales = "free") +
+  labs(x = NULL, y = NULL) +
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+
+```
+```{r ps_caporaso_cladogram, fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
+data("caporaso")
+caporaso_small <- phyloseq::subset_taxa(
+    caporaso,
+    Phylum %in% c("p__Firmicutes")
+)
+mm_lefse <- run_lefse(
+    caporaso_small,
+    wilcoxon_cutoff = 0.0001,
+    group = "SampleType",
+    kw_cutoff = 0.01,
+    multigrp_strat = TRUE,
+    lda_cutoff = 4
+)
+plot_cladogram(mm_lefse, color = c("green", "red", "magenta", "yellow"))
+```
+
+
+## Dataset: `ps_kostic_crc`
+```{r ps_kostic_crc_data}
+ps_kostic_crc
+cat("\nSample Variables\n")
+sample_variables(ps_kostic_crc)
+
+cat("\nNumber of levels in DIAGNOSIS\n")
+1:length(unique(sample_data(ps_kostic_crc)$DIAGNOSIS))
+```
+
+```{r ps_kostic_crc_heatmap, fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
+run_lefse(
+    ps_kostic_crc,
+    wilcoxon_cutoff = 0.001,
+    group = "DIAGNOSIS",
+    taxa_rank = "Class",
+    transform = "log10p",
+    kw_cutoff = 0.01,
+    multigrp_strat = TRUE,
+    lda_cutoff = 2) %>% 
+  plot_heatmap(group = "DIAGNOSIS")
+
+```
+
+
+
+```{r ps_kostic_crc_cladogram, fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
 kostic_crc_small <- phyloseq::subset_taxa(
-    kostic_crc,
+    ps_kostic_crc,
     Phylum %in% c("Firmicutes")
 )
 mm_lefse <- run_lefse(
@@ -78,65 +220,11 @@ mm_lefse <- run_lefse(
     lda_cutoff = 4
 )
 plot_cladogram(mm_lefse, color = c("darkgreen", "red"))
-
-
 ```
 
 
-## Plot ggtree cladogram
-```{r fig.height=6, fig.width=6, message=FALSE, warning=FALSE}
-library(ggtree)
-
-ggtree(
-  ps_tree,
-  mapping = NULL,
-  layout = "circular",
-  open.angle = 0,
-  mrsd = NULL,
-  as.Date = FALSE,
-  yscale = "none",
-  yscale_mapping = NULL,
-  ladderize = TRUE,
-  right = FALSE,
-  branch.length = "branch.length",
-  root.position = 0,
-  xlim = NULL
-)
-
-
-```
-
-## Overal number of samples
-```{r}
-nsamples(ps)
-```
-
-
-## Overal number of taxa
-```{r}
-ntaxa(ps)
-```
-
-
-```{r}
-#---------------------------------
-library(phyloseq)
-library(dplyr)
-library(ggplot2)
-library(microbiome)
-library(microbiomeMarker)
-#---------------------------------
-
-# Stacked Barplots
-library(ggplot2)
-data(dietswap, package = "microbiome")
-
-
-
-
-#---------------------------------
-# Heatmap
-htmp <- dietswap %>%
+```{r fig.height=10, fig.width=10, message=FALSE, warning=FALSE}
+htmp <- ps_dietswap %>%
   ps_mutate(nationality = as.character(nationality)) %>%
   tax_transform("log2", add = 1, chain = TRUE) %>%
   comp_heatmap(
@@ -146,7 +234,7 @@ htmp <- dietswap %>%
     row_names_side = "left", row_dend_side = "right", sample_side = "bottom",
     sample_anno = sampleAnnotation(
       Nationality = anno_sample_cat(
-        var = "nationality", col = c(AAM = "red", AFR = "green"),
+        var = "nationality", col = c(AAM = "grey35", AFR = "grey85"),
         box_col = NA, legend_title = "Nationality", size = grid::unit(4, "mm")
       )
     )
@@ -156,23 +244,231 @@ ComplexHeatmap::draw(
   object = htmp, annotation_legend_list = attr(htmp, "AnnoLegends"),
   merge_legends = TRUE
 )
+```
 
-# Ordination
-ord1 <- dietswap %>%
+
+```{r}
+# perform ordination
+unconstrained_aitchison_pca <- ps_dietswap %>%
   tax_filter(min_prevalence = 0.1, tax_level = "Genus") %>%
   tax_agg("Family") %>%
   tax_transform("clr") %>%
   ord_calc()
+#> Proportional min_prevalence given: 0.1 --> min 23/222 samples.
+# ord_calc will automatically infer you want a "PCA" here
+# specify explicitly with method = "PCA", or you can pick another method
 
-ord2 <- ord1 %>% 
+# create plot
+pca_plot <- unconstrained_aitchison_pca %>%
   ord_plot(
     plot_taxa = 1:6, colour = "bmi_group", size = 1.5,
     tax_vec_length = 0.325,
     tax_lab_style = tax_lab_style(max_angle = 90, aspect_ratio = 0.5),
-    auto_caption = 8) +
-   stat_ellipse(aes(linetype = bmi_group, colour = bmi_group), linewidth = 0.3) +
-   scale_colour_brewer(palette = "Set1") +
-   theme(legend.position = "bottom") +
-   coord_fixed(ratio = 0.5, clip = "off") 
+    auto_caption = 8
+  )
+
+# customise plot
+customised_plot <- pca_plot +
+  stat_ellipse(aes(linetype = bmi_group, colour = bmi_group), linewidth = 0.3) + # linewidth not size, since ggplot 3.4.0
+  scale_colour_brewer(palette = "Set1") +
+  theme(legend.position = "bottom") +
+  coord_fixed(ratio = 0.5, clip = "off") # makes rotated labels align correctly
+
+# show plot
+customised_plot
+```
+```{r}
+# Test for significance
+# calculate distances
+aitchison_dists <- ps_dietswap %>%
+  tax_filter(min_prevalence = 0.1) %>%
+  tax_transform("identity", rank = "Family") %>%
+  dist_calc("aitchison")
+#> Proportional min_prevalence given: 0.1 --> min 23/222 samples.
+
+# the more permutations you request, the longer it takes
+# but also the more stable and precise your p-values become
+aitchison_perm <- aitchison_dists %>%
+  dist_permanova(
+    seed = 1234, # for set.seed to ensure reproducibility of random process
+    n_processes = 1, n_perms = 99, # you should use at least 999!
+    variables = "bmi_group"
+  )
+#> 2023-04-03 15:50:14 - Starting PERMANOVA with 99 perms with 1 processes
+#> 2023-04-03 15:50:14 - Finished PERMANOVA
+
+# view the permanova results
+perm_get(aitchison_perm) %>% as.data.frame()
+#>            Df  SumOfSqs         R2        F Pr(>F)
+#> bmi_group   2  104.0678 0.04177157 4.773379   0.01
+#> Residual  219 2387.2862 0.95822843       NA     NA
+#> Total     221 2491.3540 1.00000000       NA     NA
+
+# view the info stored about the distance calculation
+info_get(aitchison_perm)
+#> psExtra info:
+#> tax_agg = "Family" tax_trans = "identity" dist_method = "aitchison"
+```
+```{r}
+# perm2 <- aitchison_dists %>%
+#   dist_permanova(variables = c("weight", "african", "sex"), seed = 321)
+# 
+# perm2 %>%
+#   ord_calc(constraints = c("weight", "african"), conditions = "female") %>%
+#   ord_plot(
+#     colour = "nationality", size = 2.5, alpha = 0.35,
+#     auto_caption = 7,
+#     constraint_vec_length = 1,
+#     constraint_vec_style = vec_constraint(1.5, colour = "grey15"),
+#     constraint_lab_style = constraint_lab_style(
+#       max_angle = 90, size = 3, aspect_ratio = 0.35, colour = "black"
+#     )
+#   ) +
+#   stat_ellipse(aes(colour = nationality), linewidth = 0.2) + # linewidth not size since ggplot 3.4.0
+#   scale_color_brewer(palette = "Set1") +
+#   coord_fixed(ratio = 0.35, clip = "off") +
+#   theme(legend.position = c(0.9, 0.1), legend.background = element_rect())
+```
+
+```{r}
+#Correlation heatmap
+# set up the data with numerical variables and filter to top taxa
+psq <- ps_dietswap %>%
+  ps_mutate(
+    weight = recode(bmi_group, obese = 3, overweight = 2, lean = 1),
+    female = if_else(sex == "female", true = 1, false = 0),
+    african = if_else(nationality == "AFR", true = 1, false = 0)
+  ) %>%
+  tax_filter(
+    tax_level = "Genus", min_prevalence = 1 / 10, min_sample_abundance = 1 / 10
+  ) %>%
+  tax_transform("identity", rank = "Genus")
+#> Proportional min_prevalence given: 0.1 --> min 23/222 samples.
+
+# randomly select 30 taxa from the 50 most abundant taxa (just for an example)
+set.seed(123)
+taxa <- sample(tax_top(psq, n = 50), size = 30)
+# actually draw the heatmap
+cor_heatmap(
+  data = psq, taxa = taxa,
+  taxon_renamer = function(x) stringr::str_remove(x, " [ae]t rel."),
+  tax_anno = taxAnnotation(
+    Prev. = anno_tax_prev(undetected = 50),
+    Log2 = anno_tax_box(undetected = 50, trans = "log2", zero_replace = 1)
+  )
+)
+```
+
+
+
+## Plot ggtree cladogram
+```{r fig.height=6, fig.width=6, message=FALSE, warning=FALSE}
+# library(ggtree)
+
+# ggtree(
+#   ps_tree,
+#   mapping = NULL,
+#   layout = "circular",
+#   open.angle = 0,
+#   mrsd = NULL,
+#   as.Date = FALSE,
+#   yscale = "none",
+#   yscale_mapping = NULL,
+#   ladderize = TRUE,
+#   right = FALSE,
+#   branch.length = "branch.length",
+#   root.position = 0,
+#   xlim = NULL
+# )
+
 
 ```
+
+```{r}
+
+# External data
+load("~/Dropbox/MICROBIOME/imap-data-processing/data/external/external_ps_objects.rda", verbose = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+library(vegan)
+# # Mothur
+# load("~/Dropbox/MICROBIOME/imap-data-processing/data/mothur/mothur_phyloseq_objects.rda", verbose = TRUE)
+# composite <- read_csv("~/Dropbox/MICROBIOME/imap-data-processing/data/mothur/mothur_composite.csv", show_col_types = FALSE)
+  # separate(Sample, into = c("animal", "day"), sep = "D", remove = FALSE, convert = TRUE) %>%
+set.seed(123)
+
+# taxa <- sample(tax_top(ps_dietswap, n = 30), size = 20)
+```
+
+## Getting `otutable` from phyloseq
+```{r ps_bray_jcard}
+library(tidyverse)
+library(vegan)
+library(phyloseq)
+
+ps <- ps_dietswap
+
+otutable <- otu_table(ps) %>% 
+  psmelt() %>% 
+  group_by(Sample) %>%
+  mutate(N = sum(Abundance)) %>%
+  ungroup() %>% 
+  filter(N >= min(otutable$N)) %>%
+  select(-N) %>% 
+  pivot_wider(names_from="OTU", values_from="Abundance", values_fill=0) %>%
+  column_to_rownames("Sample")
+
+
+## Getting Bray-`Curtis` distances
+
+bray <- avgdist(otutable, dmethod="bray", sample=1776) %>%
+  as.matrix() %>%
+  as_tibble(rownames = "A") %>%
+  pivot_longer(-A, names_to="B", values_to="distances")
+
+bray %>%
+  ggplot(aes(x=A, y=B, fill=distances)) +
+  geom_tile()
+
+## Getting `Jaccard` distances
+jaccard <- avgdist(otutable, dmethod="jaccard", sample=1776) %>%
+  as.matrix() %>%
+  as_tibble(rownames = "A") %>%
+  pivot_longer(-A, names_to="B", values_to="distances")
+
+jaccard %>%
+  ggplot(aes(x=A, y=B, fill=distances)) +
+  geom_tile()
+
+
+## Some params
+
+labels <- tibble(
+  x=c(50, 190),
+  y=c(190, 30),
+  label=c("Bray-Curtis", "Jaccard")
+)
+
+inner_join(bray, jaccard, by=c("A", "B")) %>%
+  select(A, B, bray=distances.x, jaccard=distances.y) %>%
+  mutate(distances = if_else(A < B, bray, jaccard)) %>%
+  # mutate(A = fct_reorder(as.character(A), A),
+  #        B = fct_reorder(as.character(B), B)) %>%
+  ggplot(aes(x=A, y=B, fill=distances)) +
+  geom_tile() +
+  geom_text(data=labels, aes(x=(x), y=y, label=label), inherit.aes=FALSE,
+            size=10) +
+  scale_fill_gradient(low="#FF0000", high="#FFFFFF", name=NULL) +
+  labs(x="", y="") +
+  theme_classic() +
+  theme(axis.line=element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_text(size=8),
+        axis.text.y = element_text(hjust= 0.5),
+        axis.text.x = element_text(angle = 90, size = 6))
+
+```
+
